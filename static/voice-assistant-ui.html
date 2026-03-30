@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Voice Assistant</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #090c10;
+    --surface: #0e1318;
+    --border: #1c2530;
+    --accent: #00e5ff;
+    --accent2: #7b2fff;
+    --text: #cdd8e3;
+    --muted: #4a5a6a;
+    --user-bubble: #13212f;
+    --ai-bubble: #0f1a10;
+    --ai-accent: #00ff88;
+    --danger: #ff4466;
+    --warn: #ffaa00;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* Background grid */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(var(--border) 1px, transparent 1px),
+      linear-gradient(90deg, var(--border) 1px, transparent 1px);
+    background-size: 40px 40px;
+    opacity: 0.4;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Radial glow */
+  body::after {
+    content: '';
+    position: fixed;
+    top: -20%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 800px;
+    height: 500px;
+    background: radial-gradient(ellipse, rgba(0,229,255,0.06) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  header {
+    position: relative;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 28px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(9,12,16,0.8);
+    backdrop-filter: blur(12px);
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 1rem;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+
+  .logo-icon {
+    width: 28px;
+    height: 28px;
+    border: 2px solid var(--accent);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+  }
+
+  .status-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.72rem;
+    color: var(--muted);
+  }
+
+  .status-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--muted);
+    transition: background 0.3s;
+  }
+  .status-dot.listening { background: var(--accent); animation: pulse-dot 1s infinite; }
+  .status-dot.thinking  { background: var(--accent2); animation: pulse-dot 0.6s infinite; }
+  .status-dot.speaking  { background: var(--ai-accent); animation: pulse-dot 0.8s infinite; }
+  .status-dot.ready     { background: var(--warn); }
+
+  @keyframes pulse-dot {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.3; }
+  }
+
+  .main {
+    position: relative;
+    z-index: 5;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    max-width: 860px;
+    width: 100%;
+    margin: 0 auto;
+    padding: 0 20px;
+    overflow: hidden;
+  }
+
+  /* Chat log */
+  .chat-log {
+    flex: 1;
+    overflow-y: auto;
+    padding: 28px 0 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+
+  .chat-log::-webkit-scrollbar { width: 4px; }
+  .chat-log::-webkit-scrollbar-track { background: transparent; }
+  .chat-log::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+  .message {
+    display: flex;
+    gap: 12px;
+    animation: slideIn 0.3s ease;
+  }
+
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .message.user { flex-direction: row-reverse; }
+
+  .avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 700;
+    font-family: 'Space Mono', monospace;
+    margin-top: 2px;
+  }
+
+  .message.user .avatar {
+    background: rgba(0,229,255,0.12);
+    border: 1px solid rgba(0,229,255,0.3);
+    color: var(--accent);
+  }
+
+  .message.ai .avatar {
+    background: rgba(0,255,136,0.08);
+    border: 1px solid rgba(0,255,136,0.25);
+    color: var(--ai-accent);
+  }
+
+  .bubble {
+    max-width: 75%;
+    padding: 13px 17px;
+    border-radius: 12px;
+    font-size: 0.92rem;
+    line-height: 1.65;
+    position: relative;
+  }
+
+  .message.user .bubble {
+    background: var(--user-bubble);
+    border: 1px solid rgba(0,229,255,0.15);
+    border-top-right-radius: 3px;
+    color: #e2eaf2;
+  }
+
+  .message.ai .bubble {
+    background: var(--ai-bubble);
+    border: 1px solid rgba(0,255,136,0.12);
+    border-top-left-radius: 3px;
+    color: #d0e8d4;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.82rem;
+  }
+
+  .bubble-meta {
+    font-size: 0.65rem;
+    color: var(--muted);
+    margin-top: 5px;
+    font-family: 'Space Mono', monospace;
+    letter-spacing: 0.04em;
+  }
+
+  .message.user .bubble-meta { text-align: right; }
+
+  /* Typing indicator */
+  .typing-bubble {
+    display: flex;
+    gap: 5px;
+    align-items: center;
+    padding: 16px 20px;
+  }
+
+  .typing-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--ai-accent);
+    animation: typingBounce 1.2s infinite;
+  }
+  .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+  .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+  @keyframes typingBounce {
+    0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+    30%            { transform: translateY(-6px); opacity: 1; }
+  }
+
+  /* Waveform visualizer */
+  .visualizer-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 18px;
+    padding: 24px 0 20px;
+    border-top: 1px solid var(--border);
+  }
+
+  .waveform {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    height: 48px;
+  }
+
+  .wave-bar {
+    width: 3px;
+    border-radius: 2px;
+    background: var(--muted);
+    transition: height 0.1s ease, background 0.3s;
+    transform-origin: center;
+  }
+
+  .waveform.listening .wave-bar {
+    background: var(--accent);
+    animation: waveAnim 0.8s ease-in-out infinite alternate;
+  }
+  .waveform.speaking .wave-bar {
+    background: var(--ai-accent);
+    animation: waveAnim 0.6s ease-in-out infinite alternate;
+  }
+  .waveform.thinking .wave-bar { background: var(--accent2); height: 4px !important; }
+
+  @keyframes waveAnim {
+    from { height: 4px; }
+    to   { height: var(--max-h, 30px); }
+  }
+
+  .controls {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .mic-btn {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 26px;
+    position: relative;
+    transition: transform 0.15s, box-shadow 0.2s;
+    background: var(--surface);
+    border: 2px solid var(--border);
+    color: var(--muted);
+    outline: none;
+  }
+
+  .mic-btn:hover { transform: scale(1.05); }
+
+  .mic-btn.active {
+    background: rgba(0,229,255,0.1);
+    border-color: var(--accent);
+    color: var(--accent);
+    box-shadow: 0 0 0 6px rgba(0,229,255,0.08), 0 0 30px rgba(0,229,255,0.2);
+    animation: ringPulse 1.5s ease-in-out infinite;
+  }
+
+  @keyframes ringPulse {
+    0%   { box-shadow: 0 0 0 0 rgba(0,229,255,0.3), 0 0 20px rgba(0,229,255,0.15); }
+    70%  { box-shadow: 0 0 0 14px rgba(0,229,255,0), 0 0 30px rgba(0,229,255,0.1); }
+    100% { box-shadow: 0 0 0 0 rgba(0,229,255,0), 0 0 20px rgba(0,229,255,0.15); }
+  }
+
+  .mic-btn.speaking {
+    background: rgba(0,255,136,0.08);
+    border-color: var(--ai-accent);
+    color: var(--ai-accent);
+  }
+
+  /* Text input row */
+  .input-row {
+    display: flex;
+    gap: 10px;
+    align-items: flex-end;
+    margin-top: 6px;
+    padding-bottom: 4px;
+  }
+
+  .text-input {
+    flex: 1;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 16px;
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    font-size: 0.8rem;
+    outline: none;
+    resize: none;
+    min-height: 44px;
+    max-height: 120px;
+    transition: border-color 0.2s;
+    line-height: 1.5;
+  }
+
+  .text-input::placeholder { color: var(--muted); }
+  .text-input:focus { border-color: rgba(0,229,255,0.35); }
+
+  .send-btn {
+    background: var(--accent);
+    border: none;
+    border-radius: 10px;
+    padding: 12px 18px;
+    color: #000;
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: opacity 0.2s, transform 0.1s;
+    letter-spacing: 0.05em;
+    height: 44px;
+  }
+
+  .send-btn:hover { opacity: 0.85; transform: scale(1.02); }
+  .send-btn:active { transform: scale(0.98); }
+
+  .clear-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    color: var(--muted);
+    font-size: 0.75rem;
+    font-family: 'Space Mono', monospace;
+    cursor: pointer;
+    height: 44px;
+    transition: border-color 0.2s, color 0.2s;
+  }
+  .clear-btn:hover { border-color: var(--danger); color: var(--danger); }
+
+  /* Mode tags */
+  .mode-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.68rem;
+    letter-spacing: 0.08em;
+    padding: 3px 9px;
+    border-radius: 4px;
+    text-transform: uppercase;
+  }
+
+  .mode-label.idle      { background: rgba(74,90,106,0.25); color: var(--muted); border: 1px solid var(--border); }
+  .mode-label.listening { background: rgba(0,229,255,0.1);  color: var(--accent); border: 1px solid rgba(0,229,255,0.3); }
+  .mode-label.thinking  { background: rgba(123,47,255,0.12); color: var(--accent2); border: 1px solid rgba(123,47,255,0.3); }
+  .mode-label.speaking  { background: rgba(0,255,136,0.08); color: var(--ai-accent); border: 1px solid rgba(0,255,136,0.25); }
+  .mode-label.error     { background: rgba(255,68,102,0.1); color: var(--danger); border: 1px solid rgba(255,68,102,0.3); }
+
+  /* Empty state */
+  .empty-state {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    color: var(--muted);
+    text-align: center;
+  }
+  .empty-icon { font-size: 2.5rem; opacity: 0.35; }
+  .empty-title { font-size: 1.1rem; font-weight: 700; color: var(--muted); }
+  .empty-sub { font-size: 0.78rem; font-family: 'Space Mono', monospace; line-height: 1.7; max-width: 360px; }
+
+  /* API warning banner */
+  .api-banner {
+    background: rgba(255,170,0,0.08);
+    border: 1px solid rgba(255,170,0,0.25);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.72rem;
+    color: var(--warn);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">◎</div>
+    VoiceAssist
+  </div>
+  <div class="status-bar">
+    <div class="status-dot" id="statusDot"></div>
+    <span id="statusText">ready</span>
+  </div>
+</header>
+
+<div class="main">
+  <div class="chat-log" id="chatLog">
+    <div class="empty-state" id="emptyState">
+      <div class="empty-icon">🎙️</div>
+      <div class="empty-title">Voice Assistant UI</div>
+      <div class="empty-sub">
+        Press the mic button to speak, or type below.<br>
+        This UI mirrors the pipeline in your repo:<br>
+        <strong style="color:var(--text)">wake → stt → gpt → tts</strong>
+      </div>
+    </div>
+  </div>
+
+  <div class="visualizer-section">
+    <div class="waveform" id="waveform">
+      <!-- bars injected by JS -->
+    </div>
+
+    <div class="controls">
+      <span class="mode-label idle" id="modeLabel">IDLE</span>
+      <button class="mic-btn" id="micBtn" title="Hold to speak">🎙️</button>
+    </div>
+
+    <div class="api-banner" id="apiBanner">
+      ⚠ &nbsp;Connect this UI to your Python backend (e.g. Flask/FastAPI) to run real GPT + TTS calls.
+    </div>
+
+    <div class="input-row">
+      <textarea class="text-input" id="textInput" placeholder="Or type your message here..." rows="1"></textarea>
+      <button class="send-btn" id="sendBtn">SEND</button>
+      <button class="clear-btn" id="clearBtn">CLR</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ── State ───────────────────────────────────────────────────────────────────
+  const state = { mode: 'idle', recognition: null, synth: window.speechSynthesis };
+
+  // ── Waveform setup ──────────────────────────────────────────────────────────
+  const waveform = document.getElementById('waveform');
+  const BARS = 28;
+  for (let i = 0; i < BARS; i++) {
+    const b = document.createElement('div');
+    b.className = 'wave-bar';
+    const h = 4 + Math.random() * 26;
+    b.style.setProperty('--max-h', h + 'px');
+    b.style.height = '4px';
+    b.style.animationDelay = (Math.random() * 0.6).toFixed(2) + 's';
+    waveform.appendChild(b);
+  }
+
+  // ── UI helpers ──────────────────────────────────────────────────────────────
+  function setMode(mode) {
+    state.mode = mode;
+    const dot = document.getElementById('statusDot');
+    const txt = document.getElementById('statusText');
+    const lbl = document.getElementById('modeLabel');
+    const mic = document.getElementById('micBtn');
+    const wf  = document.getElementById('waveform');
+
+    dot.className = 'status-dot ' + mode;
+    wf.className  = 'waveform ' + mode;
+    lbl.className = 'mode-label ' + mode;
+    lbl.textContent = mode.toUpperCase();
+
+    const map = {
+      idle:      { txt: 'ready',      mic: '🎙️',  micClass: '' },
+      listening: { txt: 'listening…', mic: '⏺',   micClass: 'active' },
+      thinking:  { txt: 'thinking…',  mic: '⏳',  micClass: '' },
+      speaking:  { txt: 'speaking…',  mic: '🔊',  micClass: 'speaking' },
+      error:     { txt: 'error',      mic: '🎙️',  micClass: '' },
+    };
+    const m = map[mode] || map.idle;
+    txt.textContent = m.txt;
+    mic.textContent = m.mic;
+    mic.className = 'mic-btn ' + m.micClass;
+  }
+
+  function addMessage(role, text) {
+    const emptyState = document.getElementById('emptyState');
+    if (emptyState) emptyState.remove();
+
+    const log = document.getElementById('chatLog');
+    const wrap = document.createElement('div');
+    wrap.className = 'message ' + role;
+
+    const avatar = document.createElement('div');
+    avatar.className = 'avatar';
+    avatar.textContent = role === 'user' ? 'U' : 'AI';
+
+    const inner = document.createElement('div');
+
+    const bubble = document.createElement('div');
+    bubble.className = 'bubble';
+    bubble.textContent = text;
+
+    const meta = document.createElement('div');
+    meta.className = 'bubble-meta';
+    const now = new Date();
+    meta.textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    inner.appendChild(bubble);
+    inner.appendChild(meta);
+    wrap.appendChild(avatar);
+    wrap.appendChild(inner);
+    log.appendChild(wrap);
+    log.scrollTop = log.scrollHeight;
+  }
+
+  function showTyping() {
+    const emptyState = document.getElementById('emptyState');
+    if (emptyState) emptyState.remove();
+
+    const log = document.getElementById('chatLog');
+    const wrap = document.createElement('div');
+    wrap.className = 'message ai';
+    wrap.id = 'typingIndicator';
+
+    const avatar = document.createElement('div');
+    avatar.className = 'avatar';
+    avatar.textContent = 'AI';
+
+    const bubble = document.createElement('div');
+    bubble.className = 'bubble typing-bubble';
+    bubble.innerHTML = '<div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div>';
+
+    wrap.appendChild(avatar);
+    wrap.appendChild(bubble);
+    log.appendChild(wrap);
+    log.scrollTop = log.scrollHeight;
+  }
+
+  function removeTyping() {
+    const t = document.getElementById('typingIndicator');
+    if (t) t.remove();
+  }
+
+  // ── Speech Recognition ──────────────────────────────────────────────────────
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+  function startListening() {
+    if (!SpeechRecognition) {
+      alert('Speech recognition is not supported in this browser. Try Chrome or Edge.');
+      return;
+    }
+    const rec = new SpeechRecognition();
+    rec.lang = 'en-US';
+    rec.interimResults = false;
+    rec.maxAlternatives = 1;
+    state.recognition = rec;
+
+    setMode('listening');
+
+    rec.onresult = (e) => {
+      const transcript = e.results[0][0].transcript;
+      handleUserInput(transcript);
+    };
+
+    rec.onerror = (e) => {
+      console.error('Speech error:', e.error);
+      setMode('error');
+      setTimeout(() => setMode('idle'), 2000);
+    };
+
+    rec.onend = () => {
+      if (state.mode === 'listening') setMode('idle');
+    };
+
+    rec.start();
+  }
+
+  function stopListening() {
+    if (state.recognition) {
+      state.recognition.stop();
+      state.recognition = null;
+    }
+  }
+
+  // ── TTS (browser) ───────────────────────────────────────────────────────────
+  function speakText(text) {
+    if (!state.synth) return;
+    state.synth.cancel();
+    const utt = new SpeechSynthesisUtterance(text);
+    utt.rate = 1;
+    utt.pitch = 1;
+    utt.onend = () => setMode('idle');
+    setMode('speaking');
+    state.synth.speak(utt);
+  }
+
+  // ── Core pipeline ───────────────────────────────────────────────────────────
+  async function handleUserInput(text) {
+    if (!text.trim()) return;
+    setMode('thinking');
+    addMessage('user', text);
+    showTyping();
+
+    // ── Try calling your Python backend if it's running ──────────────────────
+    // If you add a Flask/FastAPI wrapper around gpt_module.py, point this to it.
+    // Example endpoint: POST http://localhost:5000/ask  { "text": "..." }
+    let reply = null;
+    try {
+      const res = await fetch('http://localhost:5000/ask', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text }),
+        signal: AbortSignal.timeout(12000),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        reply = data.response || data.text || data.reply || JSON.stringify(data);
+        document.getElementById('apiBanner').classList.add('hidden');
+      }
+    } catch (_) {
+      // Backend not running — fall back to browser demo mode
+    }
+
+    // ── Fallback: browser-side demo using Web Speech API ─────────────────────
+    if (!reply) {
+      reply = await mockGPT(text);
+    }
+
+    removeTyping();
+    addMessage('ai', reply);
+    speakText(reply);
+  }
+
+  // Lightweight demo responses when backend isn't connected
+  async function mockGPT(text) {
+    await new Promise(r => setTimeout(r, 900 + Math.random() * 800));
+    const t = text.toLowerCase();
+    if (t.includes('hello') || t.includes('hi'))
+      return "Hey! I'm your voice assistant. Connect me to your Python backend to use the real GPT module.";
+    if (t.includes('time'))
+      return "It's " + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + ". (Demo mode — connect your Flask server for real GPT answers.)";
+    if (t.includes('weather'))
+      return "I can't check live weather in demo mode. Hook up your backend and I'll route it through GPT.";
+    if (t.includes('name'))
+      return "I'm the UI layer for your my-voice-assistant repo — wake, STT, GPT, and TTS wrapped in a browser interface.";
+    return `You said: "${text}" — I'm running in demo mode. Start your Python backend on port 5000 to get real GPT responses.`;
+  }
+
+  // ── Events ──────────────────────────────────────────────────────────────────
+  const micBtn   = document.getElementById('micBtn');
+  const sendBtn  = document.getElementById('sendBtn');
+  const clearBtn = document.getElementById('clearBtn');
+  const textInput = document.getElementById('textInput');
+
+  micBtn.addEventListener('mousedown', startListening);
+  micBtn.addEventListener('mouseup',   stopListening);
+  micBtn.addEventListener('touchstart', (e) => { e.preventDefault(); startListening(); });
+  micBtn.addEventListener('touchend',   (e) => { e.preventDefault(); stopListening(); });
+
+  sendBtn.addEventListener('click', () => {
+    const val = textInput.value.trim();
+    if (!val) return;
+    textInput.value = '';
+    textInput.style.height = 'auto';
+    handleUserInput(val);
+  });
+
+  textInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendBtn.click();
+    }
+  });
+
+  textInput.addEventListener('input', () => {
+    textInput.style.height = 'auto';
+    textInput.style.height = Math.min(textInput.scrollHeight, 120) + 'px';
+  });
+
+  clearBtn.addEventListener('click', () => {
+    document.getElementById('chatLog').innerHTML = `
+      <div class="empty-state" id="emptyState">
+        <div class="empty-icon">🎙️</div>
+        <div class="empty-title">Voice Assistant UI</div>
+        <div class="empty-sub">
+          Press the mic button to speak, or type below.<br>
+          This UI mirrors the pipeline in your repo:<br>
+          <strong style="color:var(--text)">wake → stt → gpt → tts</strong>
+        </div>
+      </div>`;
+    if (state.synth) state.synth.cancel();
+    setMode('idle');
+  });
+</script>
+</body>
+</html>

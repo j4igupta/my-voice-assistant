@@ -1,6 +1,6 @@
 import time
 from google import genai
-from google.genai import errors
+from google.api_core import exceptions as errors
 from config import OPENAI_API_KEY
 
 # Use the new key you got from AI Studio
