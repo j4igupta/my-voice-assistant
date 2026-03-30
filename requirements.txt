@@ -2,4 +2,10 @@ sounddevice
 vosk
 numpy
 pvporcupine
-openai
+flask
+flask-cors
+dotenv
+google-genai
+google-api-core
+Pillow
+opencv-python
