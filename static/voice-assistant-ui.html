@@ -3,747 +3,711 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Voice Assistant</title>
-<link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
+<title>JARVIS — Voice Assistant</title>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
 <style>
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-  :root {
-    --bg: #090c10;
-    --surface: #0e1318;
-    --border: #1c2530;
-    --accent: #00e5ff;
-    --accent2: #7b2fff;
-    --text: #cdd8e3;
-    --muted: #4a5a6a;
-    --user-bubble: #13212f;
-    --ai-bubble: #0f1a10;
-    --ai-accent: #00ff88;
-    --danger: #ff4466;
-    --warn: #ffaa00;
-  }
+:root {
+  --bg:      #030508;
+  --surface: #080d12;
+  --panel:   #0b1219;
+  --border:  #112233;
+  --border2: #1a3344;
+  --accent:  #00d4ff;
+  --accent2: #00ff88;
+  --accent3: #ff6b35;
+  --dim:     #2a4a5a;
+  --text:    #c8dce8;
+  --muted:   #3a5a6a;
+  --danger:  #ff3355;
+  --warn:    #ffaa00;
+}
 
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: 'Syne', sans-serif;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-  }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Rajdhani', sans-serif;
+  height: 100vh;
+  display: grid;
+  grid-template-rows: 48px 1fr;
+  grid-template-columns: 1fr 340px;
+  overflow: hidden;
+}
 
-  /* Background grid */
-  body::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    background-image:
-      linear-gradient(var(--border) 1px, transparent 1px),
-      linear-gradient(90deg, var(--border) 1px, transparent 1px);
-    background-size: 40px 40px;
-    opacity: 0.4;
-    pointer-events: none;
-    z-index: 0;
-  }
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background: repeating-linear-gradient(
+    0deg, transparent, transparent 2px,
+    rgba(0,212,255,0.018) 2px, rgba(0,212,255,0.018) 4px
+  );
+  pointer-events: none;
+  z-index: 1000;
+}
 
-  /* Radial glow */
-  body::after {
-    content: '';
-    position: fixed;
-    top: -20%;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 800px;
-    height: 500px;
-    background: radial-gradient(ellipse, rgba(0,229,255,0.06) 0%, transparent 70%);
-    pointer-events: none;
-    z-index: 0;
-  }
+/* ── HEADER ── */
+header {
+  grid-column: 1 / -1;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 20px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  position: relative; z-index: 10;
+}
 
-  header {
-    position: relative;
-    z-index: 10;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 18px 28px;
-    border-bottom: 1px solid var(--border);
-    background: rgba(9,12,16,0.8);
-    backdrop-filter: blur(12px);
-  }
+.logo {
+  display: flex; align-items: center; gap: 10px;
+  font-size: 1.05rem; font-weight: 700;
+  letter-spacing: 0.25em; color: var(--accent); text-transform: uppercase;
+}
+.logo-ring {
+  width: 24px; height: 24px;
+  border: 2px solid var(--accent); border-radius: 50%;
+  position: relative; animation: spinRing 8s linear infinite;
+}
+.logo-ring::after {
+  content: ''; position: absolute; inset: 3px;
+  border-radius: 50%; background: var(--accent); opacity: 0.3;
+}
+@keyframes spinRing { to { transform: rotate(360deg); } }
 
-  .logo {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font-size: 1rem;
-    font-weight: 800;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: var(--accent);
-  }
+.header-stats {
+  display: flex; gap: 24px;
+  font-family: 'Share Tech Mono', monospace; font-size: 0.65rem; color: var(--muted);
+}
+.stat { display: flex; align-items: center; gap: 6px; }
+.stat-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); transition: all 0.3s; }
+.stat-dot.on  { background: var(--accent2); box-shadow: 0 0 6px var(--accent2); }
+.stat-dot.rec { background: var(--danger); animation: blink 1s step-end infinite; }
+@keyframes blink { 50% { opacity: 0; } }
 
-  .logo-icon {
-    width: 28px;
-    height: 28px;
-    border: 2px solid var(--accent);
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 12px;
-  }
+/* ── CHAT PANEL (left) ── */
+.chat-panel {
+  display: flex; flex-direction: column;
+  border-right: 1px solid var(--border); overflow: hidden;
+}
+.panel-label {
+  font-family: 'Share Tech Mono', monospace; font-size: 0.6rem;
+  letter-spacing: 0.15em; color: var(--muted);
+  padding: 8px 16px; border-bottom: 1px solid var(--border);
+  background: var(--surface); display: flex; align-items: center; gap: 8px;
+}
+.panel-label::before { content: ''; width: 3px; height: 3px; background: var(--accent); border-radius: 50%; }
 
-  .status-bar {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-family: 'Space Mono', monospace;
-    font-size: 0.72rem;
-    color: var(--muted);
-  }
+.chat-log {
+  flex: 1; overflow-y: auto; padding: 16px;
+  display: flex; flex-direction: column; gap: 14px;
+  scrollbar-width: thin; scrollbar-color: var(--border2) transparent;
+}
+.chat-log::-webkit-scrollbar { width: 3px; }
+.chat-log::-webkit-scrollbar-thumb { background: var(--border2); }
 
-  .status-dot {
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    background: var(--muted);
-    transition: background 0.3s;
-  }
-  .status-dot.listening { background: var(--accent); animation: pulse-dot 1s infinite; }
-  .status-dot.thinking  { background: var(--accent2); animation: pulse-dot 0.6s infinite; }
-  .status-dot.speaking  { background: var(--ai-accent); animation: pulse-dot 0.8s infinite; }
-  .status-dot.ready     { background: var(--warn); }
+.empty-state {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 10px; color: var(--muted);
+  font-family: 'Share Tech Mono', monospace; font-size: 0.7rem;
+  text-align: center; line-height: 1.9; padding: 40px;
+}
+.empty-icon { font-size: 2rem; opacity: 0.2; margin-bottom: 6px; }
 
-  @keyframes pulse-dot {
-    0%, 100% { opacity: 1; }
-    50%       { opacity: 0.3; }
-  }
+.msg { display: flex; gap: 10px; animation: msgIn 0.25s ease; }
+.msg.user { flex-direction: row-reverse; }
+@keyframes msgIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
 
-  .main {
-    position: relative;
-    z-index: 5;
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    max-width: 860px;
-    width: 100%;
-    margin: 0 auto;
-    padding: 0 20px;
-    overflow: hidden;
-  }
+.msg-avatar {
+  width: 28px; height: 28px; border-radius: 4px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Share Tech Mono', monospace; font-size: 0.58rem; font-weight: 700;
+  flex-shrink: 0; margin-top: 2px;
+}
+.msg.user .msg-avatar { background: rgba(0,212,255,0.08); border: 1px solid rgba(0,212,255,0.25); color: var(--accent); }
+.msg.ai   .msg-avatar { background: rgba(0,255,136,0.06); border: 1px solid rgba(0,255,136,0.2);  color: var(--accent2); }
 
-  /* Chat log */
-  .chat-log {
-    flex: 1;
-    overflow-y: auto;
-    padding: 28px 0 12px;
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-    scrollbar-width: thin;
-    scrollbar-color: var(--border) transparent;
-  }
+.msg-body { max-width: 78%; }
+.bubble { padding: 10px 14px; border-radius: 8px; font-size: 0.88rem; line-height: 1.6; }
+.msg.user .bubble {
+  background: rgba(0,212,255,0.06); border: 1px solid rgba(0,212,255,0.15);
+  border-top-right-radius: 2px; color: #d8eaf5;
+}
+.msg.ai .bubble {
+  background: rgba(0,255,136,0.04); border: 1px solid rgba(0,255,136,0.12);
+  border-top-left-radius: 2px; color: #c8e8d2;
+  font-family: 'Share Tech Mono', monospace; font-size: 0.78rem;
+}
+.bubble-img {
+  max-width: 100%; border-radius: 6px; border: 1px solid var(--border2);
+  margin-bottom: 8px; display: block;
+}
+.msg-meta { font-family: 'Share Tech Mono', monospace; font-size: 0.58rem; color: var(--muted); margin-top: 4px; }
+.msg.user .msg-meta { text-align: right; }
 
-  .chat-log::-webkit-scrollbar { width: 4px; }
-  .chat-log::-webkit-scrollbar-track { background: transparent; }
-  .chat-log::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+.typing-dots { display: flex; gap: 4px; align-items: center; padding: 12px 16px; }
+.typing-dots span { width: 5px; height: 5px; border-radius: 50%; background: var(--accent2); animation: tdot 1.2s infinite; }
+.typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+.typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes tdot { 0%,60%,100%{transform:translateY(0);opacity:0.3;} 30%{transform:translateY(-5px);opacity:1;} }
 
-  .message {
-    display: flex;
-    gap: 12px;
-    animation: slideIn 0.3s ease;
-  }
+.status-banner {
+  padding: 6px 14px; font-family: 'Share Tech Mono', monospace; font-size: 0.62rem;
+  letter-spacing: 0.06em; display: flex; align-items: center; gap: 6px;
+  background: rgba(255,170,0,0.06); border-top: 1px solid rgba(255,170,0,0.2); color: var(--warn);
+}
+.status-banner.ok { background: rgba(0,255,136,0.04); border-color: rgba(0,255,136,0.15); color: var(--accent2); }
+.status-banner.hidden { display: none; }
 
-  @keyframes slideIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to   { opacity: 1; transform: translateY(0); }
-  }
+.input-zone {
+  padding: 12px 16px; border-top: 1px solid var(--border);
+  background: var(--surface); display: flex; gap: 8px; align-items: flex-end;
+}
+.text-input {
+  flex: 1; background: var(--panel); border: 1px solid var(--border2); border-radius: 6px;
+  padding: 9px 12px; color: var(--text); font-family: 'Share Tech Mono', monospace; font-size: 0.75rem;
+  outline: none; resize: none; min-height: 38px; max-height: 100px; line-height: 1.5; transition: border-color 0.2s;
+}
+.text-input::placeholder { color: var(--muted); }
+.text-input:focus { border-color: rgba(0,212,255,0.4); }
+.send-btn {
+  background: var(--accent); border: none; border-radius: 6px;
+  padding: 9px 14px; color: #000; font-family: 'Rajdhani', sans-serif; font-weight: 700;
+  font-size: 0.75rem; letter-spacing: 0.1em; cursor: pointer; height: 38px; transition: opacity 0.2s;
+}
+.send-btn:hover { opacity: 0.82; }
 
-  .message.user { flex-direction: row-reverse; }
+/* ── RIGHT PANEL ── */
+.right-panel { display: flex; flex-direction: column; overflow: hidden; background: var(--surface); }
 
-  .avatar {
-    width: 32px;
-    height: 32px;
-    border-radius: 6px;
-    flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 13px;
-    font-weight: 700;
-    font-family: 'Space Mono', monospace;
-    margin-top: 2px;
-  }
+/* camera */
+.cam-label {
+  font-family: 'Share Tech Mono', monospace; font-size: 0.6rem; letter-spacing: 0.15em; color: var(--muted);
+  padding: 8px 16px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.cam-feed {
+  position: relative; background: #000; aspect-ratio: 4/3; overflow: hidden; cursor: pointer;
+}
+video#camFeed { width: 100%; height: 100%; object-fit: cover; display: none; }
+.cam-hud { position: absolute; inset: 0; pointer-events: none; }
+.cam-corner { position: absolute; width: 18px; height: 18px; border-color: var(--accent); border-style: solid; opacity: 0.7; }
+.cam-corner.tl { top:8px;    left:8px;  border-width: 2px 0 0 2px; }
+.cam-corner.tr { top:8px;    right:8px; border-width: 2px 2px 0 0; }
+.cam-corner.bl { bottom:8px; left:8px;  border-width: 0 0 2px 2px; }
+.cam-corner.br { bottom:8px; right:8px; border-width: 0 2px 2px 0; }
+.cam-crosshair { position: absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:30px; height:30px; opacity:0.22; }
+.cam-crosshair::before,.cam-crosshair::after { content:''; position:absolute; background:var(--accent); }
+.cam-crosshair::before { top:50%; left:0; right:0; height:1px; transform:translateY(-50%); }
+.cam-crosshair::after  { left:50%; top:0; bottom:0; width:1px; transform:translateX(-50%); }
+.scan-line { position:absolute; left:0; right:0; height:2px; background:linear-gradient(90deg,transparent,var(--accent),transparent); opacity:0; top:0; }
+.scan-line.active { opacity:0.6; animation: scanMove 1.4s linear infinite; }
+@keyframes scanMove { from{top:0} to{top:100%} }
+.cam-offline {
+  position:absolute; inset:0; display:flex; flex-direction:column;
+  align-items:center; justify-content:center; gap:8px;
+  font-family:'Share Tech Mono',monospace; font-size:0.65rem; color:var(--muted);
+  background:#000; cursor:pointer; transition: background 0.2s;
+}
+.cam-offline:hover { background: #050a0f; }
+.cam-offline .icon { font-size:1.8rem; opacity:0.2; }
+.cam-offline .hint { opacity: 0.5; font-size: 0.55rem; margin-top: 2px; }
+canvas#snapCanvas { display:none; }
+.flash-overlay { position:absolute; inset:0; background:white; opacity:0; pointer-events:none; }
 
-  .message.user .avatar {
-    background: rgba(0,229,255,0.12);
-    border: 1px solid rgba(0,229,255,0.3);
-    color: var(--accent);
-  }
+/* vision controls */
+.vision-controls {
+  padding: 10px 14px; border-bottom: 1px solid var(--border);
+  display: flex; flex-direction: column; gap: 8px;
+}
+.vision-mode-row { display: flex; gap: 5px; flex-wrap: wrap; }
+.mode-chip {
+  background: var(--panel); border: 1px solid var(--border2); border-radius: 4px;
+  padding: 4px 10px; font-family: 'Share Tech Mono', monospace; font-size: 0.6rem;
+  color: var(--muted); cursor: pointer; transition: all 0.15s; letter-spacing: 0.04em;
+}
+.mode-chip:hover  { border-color: var(--accent); color: var(--accent); }
+.mode-chip.active { border-color: var(--accent); color: var(--accent); background: rgba(0,212,255,0.07); }
 
-  .message.ai .avatar {
-    background: rgba(0,255,136,0.08);
-    border: 1px solid rgba(0,255,136,0.25);
-    color: var(--ai-accent);
-  }
+.capture-btn {
+  width: 100%; background: transparent; border: 1px solid var(--accent2); border-radius: 6px;
+  padding: 9px; color: var(--accent2); font-family: 'Rajdhani', sans-serif; font-weight: 700;
+  font-size: 0.82rem; letter-spacing: 0.15em; cursor: pointer; transition: all 0.2s;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+.capture-btn:hover { background: rgba(0,255,136,0.07); box-shadow: 0 0 16px rgba(0,255,136,0.12); }
+.capture-btn:disabled { opacity: 0.35; cursor: not-allowed; }
 
-  .bubble {
-    max-width: 75%;
-    padding: 13px 17px;
-    border-radius: 12px;
-    font-size: 0.92rem;
-    line-height: 1.65;
-    position: relative;
-  }
+/* voice section */
+.voice-section {
+  flex: 1; display: flex; flex-direction: column;
+  padding: 14px; gap: 12px; overflow: hidden;
+}
+.mic-ring-wrap { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.mic-outer {
+  width: 72px; height: 72px; border-radius: 50%; border: 1px solid var(--border2);
+  display: flex; align-items: center; justify-content: center;
+  position: relative; cursor: pointer; transition: all 0.2s; user-select: none;
+}
+.mic-outer::before {
+  content: ''; position: absolute; inset: -6px; border-radius: 50%;
+  border: 1px solid transparent; transition: all 0.3s;
+}
+.mic-outer:hover { border-color: var(--accent); }
+.mic-outer.active { border-color: var(--accent); background: rgba(0,212,255,0.06); }
+.mic-outer.active::before { border-color: rgba(0,212,255,0.3); animation: micPulse 1.2s ease-in-out infinite; }
+@keyframes micPulse { 0%,100%{box-shadow:0 0 0 0 rgba(0,212,255,0.3);} 50%{box-shadow:0 0 0 12px rgba(0,212,255,0);} }
+.mic-btn { background:none; border:none; cursor:pointer; font-size:1.5rem; line-height:1; padding:0; }
 
-  .message.user .bubble {
-    background: var(--user-bubble);
-    border: 1px solid rgba(0,229,255,0.15);
-    border-top-right-radius: 3px;
-    color: #e2eaf2;
-  }
+.voice-status {
+  font-family: 'Share Tech Mono', monospace; font-size: 0.62rem;
+  letter-spacing: 0.12em; color: var(--muted); text-align: center; text-transform: uppercase;
+}
+.voice-status.listening { color: var(--accent); }
+.voice-status.thinking  { color: var(--warn); }
+.voice-status.speaking  { color: var(--accent2); }
 
-  .message.ai .bubble {
-    background: var(--ai-bubble);
-    border: 1px solid rgba(0,255,136,0.12);
-    border-top-left-radius: 3px;
-    color: #d0e8d4;
-    font-family: 'Space Mono', monospace;
-    font-size: 0.82rem;
-  }
+.waveform { display:flex; align-items:center; justify-content:center; gap:2px; height:28px; }
+.wbar { width:2px; border-radius:2px; background:var(--border2); height:4px; transition:background 0.3s; }
+.waveform.listening .wbar { background:var(--accent); animation:wb 0.7s ease-in-out infinite alternate; }
+.waveform.speaking  .wbar { background:var(--accent2); animation:wb 0.5s ease-in-out infinite alternate; }
+@keyframes wb { from{height:2px;} to{height:var(--h,18px);} }
 
-  .bubble-meta {
-    font-size: 0.65rem;
-    color: var(--muted);
-    margin-top: 5px;
-    font-family: 'Space Mono', monospace;
-    letter-spacing: 0.04em;
-  }
+.quick-cmds { display: flex; flex-direction: column; gap: 5px; }
+.qcmd-label { font-family:'Share Tech Mono',monospace; font-size:0.58rem; color:var(--muted); letter-spacing:0.1em; margin-bottom:2px; }
+.qcmd-row { display: flex; gap: 5px; flex-wrap: wrap; }
+.qcmd {
+  background:var(--panel); border:1px solid var(--border); border-radius:4px;
+  padding:4px 9px; font-family:'Share Tech Mono',monospace; font-size:0.6rem;
+  color:var(--dim); cursor:pointer; transition:all 0.15s;
+}
+.qcmd:hover { border-color:var(--accent3); color:var(--accent3); }
 
-  .message.user .bubble-meta { text-align: right; }
-
-  /* Typing indicator */
-  .typing-bubble {
-    display: flex;
-    gap: 5px;
-    align-items: center;
-    padding: 16px 20px;
-  }
-
-  .typing-dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: var(--ai-accent);
-    animation: typingBounce 1.2s infinite;
-  }
-  .typing-dot:nth-child(2) { animation-delay: 0.2s; }
-  .typing-dot:nth-child(3) { animation-delay: 0.4s; }
-
-  @keyframes typingBounce {
-    0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
-    30%            { transform: translateY(-6px); opacity: 1; }
-  }
-
-  /* Waveform visualizer */
-  .visualizer-section {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 18px;
-    padding: 24px 0 20px;
-    border-top: 1px solid var(--border);
-  }
-
-  .waveform {
-    display: flex;
-    align-items: center;
-    gap: 3px;
-    height: 48px;
-  }
-
-  .wave-bar {
-    width: 3px;
-    border-radius: 2px;
-    background: var(--muted);
-    transition: height 0.1s ease, background 0.3s;
-    transform-origin: center;
-  }
-
-  .waveform.listening .wave-bar {
-    background: var(--accent);
-    animation: waveAnim 0.8s ease-in-out infinite alternate;
-  }
-  .waveform.speaking .wave-bar {
-    background: var(--ai-accent);
-    animation: waveAnim 0.6s ease-in-out infinite alternate;
-  }
-  .waveform.thinking .wave-bar { background: var(--accent2); height: 4px !important; }
-
-  @keyframes waveAnim {
-    from { height: 4px; }
-    to   { height: var(--max-h, 30px); }
-  }
-
-  .controls {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-  }
-
-  .mic-btn {
-    width: 64px;
-    height: 64px;
-    border-radius: 50%;
-    border: none;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 26px;
-    position: relative;
-    transition: transform 0.15s, box-shadow 0.2s;
-    background: var(--surface);
-    border: 2px solid var(--border);
-    color: var(--muted);
-    outline: none;
-  }
-
-  .mic-btn:hover { transform: scale(1.05); }
-
-  .mic-btn.active {
-    background: rgba(0,229,255,0.1);
-    border-color: var(--accent);
-    color: var(--accent);
-    box-shadow: 0 0 0 6px rgba(0,229,255,0.08), 0 0 30px rgba(0,229,255,0.2);
-    animation: ringPulse 1.5s ease-in-out infinite;
-  }
-
-  @keyframes ringPulse {
-    0%   { box-shadow: 0 0 0 0 rgba(0,229,255,0.3), 0 0 20px rgba(0,229,255,0.15); }
-    70%  { box-shadow: 0 0 0 14px rgba(0,229,255,0), 0 0 30px rgba(0,229,255,0.1); }
-    100% { box-shadow: 0 0 0 0 rgba(0,229,255,0), 0 0 20px rgba(0,229,255,0.15); }
-  }
-
-  .mic-btn.speaking {
-    background: rgba(0,255,136,0.08);
-    border-color: var(--ai-accent);
-    color: var(--ai-accent);
-  }
-
-  /* Text input row */
-  .input-row {
-    display: flex;
-    gap: 10px;
-    align-items: flex-end;
-    margin-top: 6px;
-    padding-bottom: 4px;
-  }
-
-  .text-input {
-    flex: 1;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 12px 16px;
-    color: var(--text);
-    font-family: 'Space Mono', monospace;
-    font-size: 0.8rem;
-    outline: none;
-    resize: none;
-    min-height: 44px;
-    max-height: 120px;
-    transition: border-color 0.2s;
-    line-height: 1.5;
-  }
-
-  .text-input::placeholder { color: var(--muted); }
-  .text-input:focus { border-color: rgba(0,229,255,0.35); }
-
-  .send-btn {
-    background: var(--accent);
-    border: none;
-    border-radius: 10px;
-    padding: 12px 18px;
-    color: #000;
-    font-family: 'Syne', sans-serif;
-    font-weight: 700;
-    font-size: 0.8rem;
-    cursor: pointer;
-    transition: opacity 0.2s, transform 0.1s;
-    letter-spacing: 0.05em;
-    height: 44px;
-  }
-
-  .send-btn:hover { opacity: 0.85; transform: scale(1.02); }
-  .send-btn:active { transform: scale(0.98); }
-
-  .clear-btn {
-    background: transparent;
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 12px 14px;
-    color: var(--muted);
-    font-size: 0.75rem;
-    font-family: 'Space Mono', monospace;
-    cursor: pointer;
-    height: 44px;
-    transition: border-color 0.2s, color 0.2s;
-  }
-  .clear-btn:hover { border-color: var(--danger); color: var(--danger); }
-
-  /* Mode tags */
-  .mode-label {
-    font-family: 'Space Mono', monospace;
-    font-size: 0.68rem;
-    letter-spacing: 0.08em;
-    padding: 3px 9px;
-    border-radius: 4px;
-    text-transform: uppercase;
-  }
-
-  .mode-label.idle      { background: rgba(74,90,106,0.25); color: var(--muted); border: 1px solid var(--border); }
-  .mode-label.listening { background: rgba(0,229,255,0.1);  color: var(--accent); border: 1px solid rgba(0,229,255,0.3); }
-  .mode-label.thinking  { background: rgba(123,47,255,0.12); color: var(--accent2); border: 1px solid rgba(123,47,255,0.3); }
-  .mode-label.speaking  { background: rgba(0,255,136,0.08); color: var(--ai-accent); border: 1px solid rgba(0,255,136,0.25); }
-  .mode-label.error     { background: rgba(255,68,102,0.1); color: var(--danger); border: 1px solid rgba(255,68,102,0.3); }
-
-  /* Empty state */
-  .empty-state {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 12px;
-    color: var(--muted);
-    text-align: center;
-  }
-  .empty-icon { font-size: 2.5rem; opacity: 0.35; }
-  .empty-title { font-size: 1.1rem; font-weight: 700; color: var(--muted); }
-  .empty-sub { font-size: 0.78rem; font-family: 'Space Mono', monospace; line-height: 1.7; max-width: 360px; }
-
-  /* API warning banner */
-  .api-banner {
-    background: rgba(255,170,0,0.08);
-    border: 1px solid rgba(255,170,0,0.25);
-    border-radius: 8px;
-    padding: 10px 14px;
-    font-family: 'Space Mono', monospace;
-    font-size: 0.72rem;
-    color: var(--warn);
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 10px;
-  }
-
-  .hidden { display: none !important; }
+.clear-row { margin-top: auto; }
+.clear-btn {
+  width:100%; background:transparent; border:1px solid var(--border); border-radius:6px;
+  padding:7px; color:var(--muted); font-family:'Share Tech Mono',monospace; font-size:0.62rem;
+  letter-spacing:0.1em; cursor:pointer; transition:all 0.2s;
+}
+.clear-btn:hover { border-color:var(--danger); color:var(--danger); }
 </style>
 </head>
 <body>
 
 <header>
-  <div class="logo">
-    <div class="logo-icon">◎</div>
-    VoiceAssist
-  </div>
-  <div class="status-bar">
-    <div class="status-dot" id="statusDot"></div>
-    <span id="statusText">ready</span>
+  <div class="logo"><div class="logo-ring"></div>JARVIS</div>
+  <div class="header-stats">
+    <div class="stat"><div class="stat-dot" id="dotBackend"></div><span id="lblBackend">BACKEND</span></div>
+    <div class="stat"><div class="stat-dot" id="dotCam"></div><span id="lblCam">CAM</span></div>
+    <div class="stat"><div class="stat-dot" id="dotMic"></div><span>MIC</span></div>
   </div>
 </header>
 
-<div class="main">
+<!-- CHAT -->
+<div class="chat-panel">
+  <div class="panel-label">CONVERSATION LOG</div>
   <div class="chat-log" id="chatLog">
     <div class="empty-state" id="emptyState">
-      <div class="empty-icon">🎙️</div>
-      <div class="empty-title">Voice Assistant UI</div>
-      <div class="empty-sub">
-        Press the mic button to speak, or type below.<br>
-        This UI mirrors the pipeline in your repo:<br>
-        <strong style="color:var(--text)">wake → stt → gpt → tts</strong>
-      </div>
+      <div class="empty-icon">◎</div>
+      SYSTEM READY<br>
+      hold mic to speak · type below<br>
+      click camera feed to capture &amp; analyze
     </div>
   </div>
+  <div id="statusBanner" class="status-banner">
+    ⚠ DEMO MODE — run server.py on :5000 for real AI responses
+  </div>
+  <div class="input-zone">
+    <textarea class="text-input" id="textInput" placeholder="type command..." rows="1"></textarea>
+    <button class="send-btn" id="sendBtn">SEND</button>
+  </div>
+</div>
 
-  <div class="visualizer-section">
-    <div class="waveform" id="waveform">
-      <!-- bars injected by JS -->
+<!-- RIGHT -->
+<div class="right-panel">
+
+  <div>
+    <div class="cam-label">
+      <span>VISUAL INPUT</span>
+      <span id="camStatusTxt" style="color:var(--muted);font-family:'Share Tech Mono',monospace;font-size:0.6rem;">OFFLINE</span>
+    </div>
+    <div class="cam-feed" id="camFeedWrap" title="Click to capture & analyze">
+      <div class="cam-offline" id="camOffline">
+        <div class="icon">📷</div>
+        CAMERA OFFLINE
+        <div class="hint">CLICK TO ENABLE</div>
+      </div>
+      <video id="camFeed" autoplay playsinline muted></video>
+      <div class="cam-hud">
+        <div class="cam-corner tl"></div><div class="cam-corner tr"></div>
+        <div class="cam-corner bl"></div><div class="cam-corner br"></div>
+        <div class="cam-crosshair"></div>
+        <div class="scan-line" id="scanLine"></div>
+      </div>
+      <div class="flash-overlay" id="flashOverlay"></div>
+    </div>
+    <canvas id="snapCanvas"></canvas>
+  </div>
+
+  <div class="vision-controls">
+    <div class="vision-mode-row">
+      <div class="mode-chip active" data-prompt="Briefly describe the most important things in this scene in 1-2 sentences.">DESCRIBE</div>
+      <div class="mode-chip" data-prompt="Read any text visible in this image aloud.">READ TEXT</div>
+      <div class="mode-chip" data-prompt="List the main objects visible in this image.">OBJECTS</div>
+      <div class="mode-chip" data-prompt="Identify any hazards or dangerous situations in this image.">HAZARDS</div>
+      <div class="mode-chip" data-prompt="Give navigation guidance based on what is in front of the user.">NAVIGATE</div>
+    </div>
+    <button class="capture-btn" id="captureBtn" disabled>
+      ⊙ &nbsp;CAPTURE &amp; ANALYZE
+    </button>
+  </div>
+
+  <div class="voice-section">
+    <div class="mic-ring-wrap">
+      <div class="mic-outer" id="micOuter">
+        <button class="mic-btn" id="micBtn">🎙️</button>
+      </div>
+      <div class="voice-status" id="voiceStatus">STANDBY</div>
     </div>
 
-    <div class="controls">
-      <span class="mode-label idle" id="modeLabel">IDLE</span>
-      <button class="mic-btn" id="micBtn" title="Hold to speak">🎙️</button>
+    <div class="waveform" id="waveform"></div>
+
+    <div class="quick-cmds">
+      <div class="qcmd-label">QUICK COMMANDS</div>
+      <div class="qcmd-row">
+        <div class="qcmd" data-cmd="text:What time is it?">TIME</div>
+        <div class="qcmd" data-cmd="vision:describe">LOOK</div>
+        <div class="qcmd" data-cmd="vision:read">READ</div>
+        <div class="qcmd" data-cmd="vision:hazard">HAZARDS</div>
+        <div class="qcmd" data-cmd="text:Tell me something interesting.">TRIVIA</div>
+      </div>
     </div>
 
-    <div class="api-banner" id="apiBanner">
-      ⚠ &nbsp;Connect this UI to your Python backend (e.g. Flask/FastAPI) to run real GPT + TTS calls.
-    </div>
-
-    <div class="input-row">
-      <textarea class="text-input" id="textInput" placeholder="Or type your message here..." rows="1"></textarea>
-      <button class="send-btn" id="sendBtn">SEND</button>
-      <button class="clear-btn" id="clearBtn">CLR</button>
+    <div class="clear-row">
+      <button class="clear-btn" id="clearBtn">⌧ CLEAR LOG</button>
     </div>
   </div>
 </div>
 
 <script>
-  // ── State ───────────────────────────────────────────────────────────────────
-  const state = { mode: 'idle', recognition: null, synth: window.speechSynthesis };
+// ── state ──────────────────────────────────────────────────
+const S = {
+  camStream: null, recognition: null, synth: window.speechSynthesis,
+  mode: 'idle', backendOk: false,
+  activePrompt: "Briefly describe the most important things in this scene in 1-2 sentences.",
+};
 
-  // ── Waveform setup ──────────────────────────────────────────────────────────
-  const waveform = document.getElementById('waveform');
-  const BARS = 28;
-  for (let i = 0; i < BARS; i++) {
-    const b = document.createElement('div');
-    b.className = 'wave-bar';
-    const h = 4 + Math.random() * 26;
-    b.style.setProperty('--max-h', h + 'px');
-    b.style.height = '4px';
-    b.style.animationDelay = (Math.random() * 0.6).toFixed(2) + 's';
-    waveform.appendChild(b);
+const VISION_PROMPTS = {
+  describe: "Briefly describe the most important things in this scene in 1-2 sentences.",
+  read:     "Read any visible text in this image clearly.",
+  hazard:   "Identify any hazards or dangerous situations in this image immediately.",
+  objects:  "List the main objects visible in this image.",
+  navigate: "Give navigation guidance based on what is directly in front of the user.",
+};
+
+// ── waveform ───────────────────────────────────────────────
+const wf = document.getElementById('waveform');
+for (let i = 0; i < 32; i++) {
+  const b = document.createElement('div');
+  b.className = 'wbar';
+  b.style.setProperty('--h', (4 + Math.random() * 20) + 'px');
+  b.style.animationDelay = (Math.random() * 0.5).toFixed(2) + 's';
+  wf.appendChild(b);
+}
+
+// ── mode display ───────────────────────────────────────────
+function setMode(m) {
+  S.mode = m;
+  const map = {
+    idle:      { lbl:'STANDBY',   cls:'',          icon:'🎙️' },
+    listening: { lbl:'LISTENING', cls:'listening', icon:'⏺' },
+    thinking:  { lbl:'THINKING',  cls:'thinking',  icon:'⏳' },
+    speaking:  { lbl:'SPEAKING',  cls:'speaking',  icon:'🔊' },
+  };
+  const { lbl, cls, icon } = map[m] || map.idle;
+  document.getElementById('voiceStatus').textContent = lbl;
+  document.getElementById('voiceStatus').className = 'voice-status ' + cls;
+  document.getElementById('waveform').className = 'waveform ' + cls;
+  document.getElementById('micBtn').textContent = icon;
+  document.getElementById('micOuter').className = 'mic-outer' + (m === 'listening' ? ' active' : '');
+}
+
+// ── chat helpers ───────────────────────────────────────────
+function ts() { return new Date().toLocaleTimeString([], { hour:'2-digit', minute:'2-digit', second:'2-digit' }); }
+
+function clearEmpty() { const e = document.getElementById('emptyState'); if (e) e.remove(); }
+
+function addMsg(role, text, imgUrl = null) {
+  clearEmpty();
+  const log = document.getElementById('chatLog');
+  const wrap = document.createElement('div'); wrap.className = 'msg ' + role;
+  const av = document.createElement('div'); av.className = 'msg-avatar'; av.textContent = role === 'user' ? 'YOU' : 'AI';
+  const body = document.createElement('div'); body.className = 'msg-body';
+  const bubble = document.createElement('div'); bubble.className = 'bubble';
+  if (imgUrl) {
+    const img = document.createElement('img'); img.className = 'bubble-img'; img.src = imgUrl;
+    bubble.appendChild(img);
   }
+  const txt = document.createElement('span'); txt.textContent = text; bubble.appendChild(txt);
+  const meta = document.createElement('div'); meta.className = 'msg-meta'; meta.textContent = ts();
+  body.appendChild(bubble); body.appendChild(meta);
+  wrap.appendChild(av); wrap.appendChild(body); log.appendChild(wrap);
+  log.scrollTop = log.scrollHeight;
+}
 
-  // ── UI helpers ──────────────────────────────────────────────────────────────
-  function setMode(mode) {
-    state.mode = mode;
-    const dot = document.getElementById('statusDot');
-    const txt = document.getElementById('statusText');
-    const lbl = document.getElementById('modeLabel');
-    const mic = document.getElementById('micBtn');
-    const wf  = document.getElementById('waveform');
+function showTyping() {
+  clearEmpty();
+  const log = document.getElementById('chatLog');
+  const wrap = document.createElement('div'); wrap.className = 'msg ai'; wrap.id = 'typingIndicator';
+  const av = document.createElement('div'); av.className = 'msg-avatar'; av.textContent = 'AI';
+  const bub = document.createElement('div'); bub.className = 'bubble typing-dots';
+  bub.innerHTML = '<span></span><span></span><span></span>';
+  wrap.appendChild(av); wrap.appendChild(bub); log.appendChild(wrap);
+  log.scrollTop = log.scrollHeight;
+}
+function removeTyping() { const t = document.getElementById('typingIndicator'); if (t) t.remove(); }
 
-    dot.className = 'status-dot ' + mode;
-    wf.className  = 'waveform ' + mode;
-    lbl.className = 'mode-label ' + mode;
-    lbl.textContent = mode.toUpperCase();
-
-    const map = {
-      idle:      { txt: 'ready',      mic: '🎙️',  micClass: '' },
-      listening: { txt: 'listening…', mic: '⏺',   micClass: 'active' },
-      thinking:  { txt: 'thinking…',  mic: '⏳',  micClass: '' },
-      speaking:  { txt: 'speaking…',  mic: '🔊',  micClass: 'speaking' },
-      error:     { txt: 'error',      mic: '🎙️',  micClass: '' },
-    };
-    const m = map[mode] || map.idle;
-    txt.textContent = m.txt;
-    mic.textContent = m.mic;
-    mic.className = 'mic-btn ' + m.micClass;
+// ── backend check ──────────────────────────────────────────
+async function checkBackend() {
+  try {
+    const r = await fetch('http://localhost:5000/ask', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ text: 'ping' }),
+      signal: AbortSignal.timeout(2000)
+    });
+    S.backendOk = r.ok;
+  } catch { S.backendOk = false; }
+  const dot = document.getElementById('dotBackend');
+  const banner = document.getElementById('statusBanner');
+  if (S.backendOk) {
+    dot.className = 'stat-dot on';
+    banner.className = 'status-banner ok';
+    banner.textContent = '✓ BACKEND CONNECTED — server.py running on :5000';
+  } else {
+    dot.className = 'stat-dot';
+    banner.className = 'status-banner';
+    banner.textContent = '⚠ DEMO MODE — run server.py on :5000 for real AI responses';
   }
+}
+checkBackend();
+setInterval(checkBackend, 10000);
 
-  function addMessage(role, text) {
-    const emptyState = document.getElementById('emptyState');
-    if (emptyState) emptyState.remove();
+// ── camera ─────────────────────────────────────────────────
+const video      = document.getElementById('camFeed');
+const canvas     = document.getElementById('snapCanvas');
+const camOffline = document.getElementById('camOffline');
+const captureBtn = document.getElementById('captureBtn');
+const dotCam     = document.getElementById('dotCam');
+const camTxt     = document.getElementById('camStatusTxt');
 
-    const log = document.getElementById('chatLog');
-    const wrap = document.createElement('div');
-    wrap.className = 'message ' + role;
-
-    const avatar = document.createElement('div');
-    avatar.className = 'avatar';
-    avatar.textContent = role === 'user' ? 'U' : 'AI';
-
-    const inner = document.createElement('div');
-
-    const bubble = document.createElement('div');
-    bubble.className = 'bubble';
-    bubble.textContent = text;
-
-    const meta = document.createElement('div');
-    meta.className = 'bubble-meta';
-    const now = new Date();
-    meta.textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-    inner.appendChild(bubble);
-    inner.appendChild(meta);
-    wrap.appendChild(avatar);
-    wrap.appendChild(inner);
-    log.appendChild(wrap);
-    log.scrollTop = log.scrollHeight;
+async function initCamera() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { width: 640, height: 480, facingMode: 'environment' }, audio: false
+    });
+    S.camStream = stream;
+    video.srcObject = stream;
+    video.style.display = 'block';
+    camOffline.style.display = 'none';
+    captureBtn.disabled = false;
+    dotCam.className = 'stat-dot on';
+    camTxt.style.color = 'var(--accent2)'; camTxt.textContent = 'LIVE';
+  } catch (err) {
+    camTxt.style.color = 'var(--danger)'; camTxt.textContent = 'DENIED';
+    camOffline.querySelector('.hint').textContent = 'CHECK PERMISSIONS';
   }
+}
 
-  function showTyping() {
-    const emptyState = document.getElementById('emptyState');
-    if (emptyState) emptyState.remove();
+initCamera(); // auto-attempt on load
+camOffline.addEventListener('click', initCamera);
 
-    const log = document.getElementById('chatLog');
-    const wrap = document.createElement('div');
-    wrap.className = 'message ai';
-    wrap.id = 'typingIndicator';
-
-    const avatar = document.createElement('div');
-    avatar.className = 'avatar';
-    avatar.textContent = 'AI';
-
-    const bubble = document.createElement('div');
-    bubble.className = 'bubble typing-bubble';
-    bubble.innerHTML = '<div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div>';
-
-    wrap.appendChild(avatar);
-    wrap.appendChild(bubble);
-    log.appendChild(wrap);
-    log.scrollTop = log.scrollHeight;
+// clicking the live feed also triggers capture
+document.getElementById('camFeedWrap').addEventListener('click', (e) => {
+  if (S.camStream && !captureBtn.disabled && e.target !== camOffline && !camOffline.contains(e.target)) {
+    runVision(S.activePrompt);
   }
+});
 
-  function removeTyping() {
-    const t = document.getElementById('typingIndicator');
-    if (t) t.remove();
+function captureFrame() {
+  if (!S.camStream) return null;
+  canvas.width  = video.videoWidth  || 640;
+  canvas.height = video.videoHeight || 480;
+  canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+  return canvas.toDataURL('image/jpeg', 0.85);
+}
+
+function flash() {
+  const f = document.getElementById('flashOverlay');
+  f.style.transition = 'none'; f.style.opacity = '0.85';
+  requestAnimationFrame(() => {
+    f.style.transition = 'opacity 0.5s ease'; f.style.opacity = '0';
+  });
+}
+
+// ── vision pipeline ────────────────────────────────────────
+async function runVision(prompt) {
+  if (!S.camStream) {
+    addMsg('ai', 'Camera offline — click the camera feed and allow access.');
+    return;
   }
+  flash();
+  document.getElementById('scanLine').className = 'scan-line active';
 
-  // ── Speech Recognition ──────────────────────────────────────────────────────
-  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const imgDataUrl = captureFrame();
+  addMsg('user', `[CAPTURE] ${prompt}`, imgDataUrl);
+  setMode('thinking');
+  showTyping();
 
-  function startListening() {
-    if (!SpeechRecognition) {
-      alert('Speech recognition is not supported in this browser. Try Chrome or Edge.');
-      return;
+  let reply = null;
+
+  if (S.backendOk) {
+    // Try multipart upload
+    try {
+      const blob = await (await fetch(imgDataUrl)).blob();
+      const form = new FormData();
+      form.append('image', blob, 'frame.jpg');
+      form.append('prompt', prompt);
+      const res = await fetch('http://localhost:5000/vision-upload', {
+        method: 'POST', body: form, signal: AbortSignal.timeout(20000)
+      });
+      if (res.ok) reply = (await res.json()).response;
+    } catch {}
+
+    // Fallback: base64 JSON
+    if (!reply) {
+      try {
+        const res = await fetch('http://localhost:5000/vision-b64', {
+          method: 'POST', headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({ image_b64: imgDataUrl.split(',')[1], prompt }),
+          signal: AbortSignal.timeout(20000)
+        });
+        if (res.ok) reply = (await res.json()).response;
+      } catch {}
     }
-    const rec = new SpeechRecognition();
-    rec.lang = 'en-US';
-    rec.interimResults = false;
-    rec.maxAlternatives = 1;
-    state.recognition = rec;
-
-    setMode('listening');
-
-    rec.onresult = (e) => {
-      const transcript = e.results[0][0].transcript;
-      handleUserInput(transcript);
-    };
-
-    rec.onerror = (e) => {
-      console.error('Speech error:', e.error);
-      setMode('error');
-      setTimeout(() => setMode('idle'), 2000);
-    };
-
-    rec.onend = () => {
-      if (state.mode === 'listening') setMode('idle');
-    };
-
-    rec.start();
   }
 
-  function stopListening() {
-    if (state.recognition) {
-      state.recognition.stop();
-      state.recognition = null;
-    }
+  // demo fallback
+  if (!reply) {
+    await new Promise(r => setTimeout(r, 1000));
+    reply = `[DEMO] Image captured. Connect server.py to run Gemini vision analysis. Prompt was: "${prompt}"`;
   }
 
-  // ── TTS (browser) ───────────────────────────────────────────────────────────
-  function speakText(text) {
-    if (!state.synth) return;
-    state.synth.cancel();
-    const utt = new SpeechSynthesisUtterance(text);
-    utt.rate = 1;
-    utt.pitch = 1;
-    utt.onend = () => setMode('idle');
-    setMode('speaking');
-    state.synth.speak(utt);
-  }
+  document.getElementById('scanLine').className = 'scan-line';
+  removeTyping();
+  addMsg('ai', reply);
+  speak(reply);
+}
 
-  // ── Core pipeline ───────────────────────────────────────────────────────────
-  async function handleUserInput(text) {
-    if (!text.trim()) return;
-    setMode('thinking');
-    addMessage('user', text);
-    showTyping();
-
-    // ── Try calling your Python backend if it's running ──────────────────────
-    // If you add a Flask/FastAPI wrapper around gpt_module.py, point this to it.
-    // Example endpoint: POST http://localhost:5000/ask  { "text": "..." }
-    let reply = null;
+// ── text/gpt pipeline ──────────────────────────────────────
+async function handleText(text) {
+  if (!text.trim()) return;
+  addMsg('user', text);
+  setMode('thinking');
+  showTyping();
+  let reply = null;
+  if (S.backendOk) {
     try {
       const res = await fetch('http://localhost:5000/ask', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text }),
-        signal: AbortSignal.timeout(12000),
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ text }), signal: AbortSignal.timeout(15000)
       });
-      if (res.ok) {
-        const data = await res.json();
-        reply = data.response || data.text || data.reply || JSON.stringify(data);
-        document.getElementById('apiBanner').classList.add('hidden');
-      }
-    } catch (_) {
-      // Backend not running — fall back to browser demo mode
-    }
-
-    // ── Fallback: browser-side demo using Web Speech API ─────────────────────
-    if (!reply) {
-      reply = await mockGPT(text);
-    }
-
-    removeTyping();
-    addMessage('ai', reply);
-    speakText(reply);
+      if (res.ok) reply = (await res.json()).response;
+    } catch {}
   }
+  if (!reply) reply = await demoReply(text);
+  removeTyping();
+  addMsg('ai', reply);
+  speak(reply);
+}
 
-  // Lightweight demo responses when backend isn't connected
-  async function mockGPT(text) {
-    await new Promise(r => setTimeout(r, 900 + Math.random() * 800));
-    const t = text.toLowerCase();
-    if (t.includes('hello') || t.includes('hi'))
-      return "Hey! I'm your voice assistant. Connect me to your Python backend to use the real GPT module.";
-    if (t.includes('time'))
-      return "It's " + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + ". (Demo mode — connect your Flask server for real GPT answers.)";
-    if (t.includes('weather'))
-      return "I can't check live weather in demo mode. Hook up your backend and I'll route it through GPT.";
-    if (t.includes('name'))
-      return "I'm the UI layer for your my-voice-assistant repo — wake, STT, GPT, and TTS wrapped in a browser interface.";
-    return `You said: "${text}" — I'm running in demo mode. Start your Python backend on port 5000 to get real GPT responses.`;
-  }
+async function demoReply(text) {
+  await new Promise(r => setTimeout(r, 700 + Math.random() * 500));
+  const t = text.toLowerCase();
+  if (t.includes('time')) return 'Current time: ' + new Date().toLocaleTimeString();
+  if (t.includes('hello') || t.includes('hi')) return "Online. I'm JARVIS. How can I assist?";
+  return `Demo mode. Received: "${text}". Start server.py for real GPT responses.`;
+}
 
-  // ── Events ──────────────────────────────────────────────────────────────────
-  const micBtn   = document.getElementById('micBtn');
-  const sendBtn  = document.getElementById('sendBtn');
-  const clearBtn = document.getElementById('clearBtn');
-  const textInput = document.getElementById('textInput');
+// ── TTS ────────────────────────────────────────────────────
+function speak(text) {
+  if (!S.synth) return;
+  S.synth.cancel();
+  const utt = new SpeechSynthesisUtterance(text);
+  utt.rate = 1.05; utt.pitch = 0.88;
+  setMode('speaking');
+  utt.onend = () => setMode('idle');
+  S.synth.speak(utt);
+}
 
-  micBtn.addEventListener('mousedown', startListening);
-  micBtn.addEventListener('mouseup',   stopListening);
-  micBtn.addEventListener('touchstart', (e) => { e.preventDefault(); startListening(); });
-  micBtn.addEventListener('touchend',   (e) => { e.preventDefault(); stopListening(); });
+// ── Speech Recognition ─────────────────────────────────────
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+const dotMic = document.getElementById('dotMic');
 
-  sendBtn.addEventListener('click', () => {
-    const val = textInput.value.trim();
-    if (!val) return;
-    textInput.value = '';
-    textInput.style.height = 'auto';
-    handleUserInput(val);
+function startListening() {
+  if (!SR) { alert('Use Chrome or Edge for mic support.'); return; }
+  const rec = new SR();
+  rec.lang = 'en-US'; rec.interimResults = false;
+  S.recognition = rec;
+  setMode('listening'); dotMic.className = 'stat-dot rec';
+
+  rec.onresult = e => {
+    const t = e.results[0][0].transcript;
+    dotMic.className = 'stat-dot';
+    // vision keywords → capture & analyze
+    if (/look|see|show|read|scan|describe|hazard|navigate|what is/i.test(t)) {
+      runVision(S.activePrompt);
+    } else {
+      handleText(t);
+    }
+  };
+  rec.onerror = rec.onend = () => {
+    if (S.mode === 'listening') setMode('idle');
+    dotMic.className = 'stat-dot';
+  };
+  rec.start();
+}
+function stopListening() { S.recognition?.stop(); S.recognition = null; }
+
+// ── events ─────────────────────────────────────────────────
+const micOuter = document.getElementById('micOuter');
+micOuter.addEventListener('mousedown',  startListening);
+micOuter.addEventListener('mouseup',    stopListening);
+micOuter.addEventListener('mouseleave', stopListening);
+micOuter.addEventListener('touchstart', e => { e.preventDefault(); startListening(); });
+micOuter.addEventListener('touchend',   e => { e.preventDefault(); stopListening(); });
+
+captureBtn.addEventListener('click', () => runVision(S.activePrompt));
+
+document.querySelectorAll('.mode-chip').forEach(chip => {
+  chip.addEventListener('click', () => {
+    document.querySelectorAll('.mode-chip').forEach(c => c.classList.remove('active'));
+    chip.classList.add('active');
+    S.activePrompt = chip.dataset.prompt;
   });
+});
 
-  textInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      sendBtn.click();
+document.querySelectorAll('.qcmd').forEach(qc => {
+  qc.addEventListener('click', () => {
+    const cmd = qc.dataset.cmd;
+    if (cmd.startsWith('vision:')) {
+      runVision(VISION_PROMPTS[cmd.split(':')[1]] || S.activePrompt);
+    } else {
+      handleText(cmd.replace('text:', ''));
     }
   });
+});
 
-  textInput.addEventListener('input', () => {
-    textInput.style.height = 'auto';
-    textInput.style.height = Math.min(textInput.scrollHeight, 120) + 'px';
-  });
+const textInput = document.getElementById('textInput');
+document.getElementById('sendBtn').addEventListener('click', () => {
+  const v = textInput.value.trim(); if (!v) return;
+  textInput.value = ''; textInput.style.height = 'auto';
+  handleText(v);
+});
+textInput.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); document.getElementById('sendBtn').click(); } });
+textInput.addEventListener('input', () => { textInput.style.height = 'auto'; textInput.style.height = Math.min(textInput.scrollHeight, 100) + 'px'; });
 
-  clearBtn.addEventListener('click', () => {
-    document.getElementById('chatLog').innerHTML = `
-      <div class="empty-state" id="emptyState">
-        <div class="empty-icon">🎙️</div>
-        <div class="empty-title">Voice Assistant UI</div>
-        <div class="empty-sub">
-          Press the mic button to speak, or type below.<br>
-          This UI mirrors the pipeline in your repo:<br>
-          <strong style="color:var(--text)">wake → stt → gpt → tts</strong>
-        </div>
-      </div>`;
-    if (state.synth) state.synth.cancel();
-    setMode('idle');
-  });
+document.getElementById('clearBtn').addEventListener('click', () => {
+  document.getElementById('chatLog').innerHTML = `<div class="empty-state" id="emptyState"><div class="empty-icon">◎</div>SYSTEM READY<br>hold mic to speak · type below<br>click camera feed to capture &amp; analyze</div>`;
+  S.synth?.cancel(); setMode('idle');
+});
 </script>
 </body>
 </html>
